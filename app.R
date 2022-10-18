@@ -110,11 +110,56 @@ appUI <- navbarPage(
   ),
   
   ## 1.4 NUTS tab  ==========================================================================================
-  tabPanel("Data per NUTS region"
+  tabPanel("Data per NUTS region",
+           sidebarLayout(
+             sidebarPanel(
+               width = 3,
+               pickerInput(
+                 inputId  = "nutsSelection",
+                 label    = "Choose a country:", 
+                 choices  = COUNTRYdata.df$country,
+                 selected = "Netherlands"
+               )
+             ),
+             mainPanel(
+               htmlOutput("nuts.header"),
+               br(),
+               uiOutput("nuts.ginfo"),
+               h3("Geographical distribution across NUTS regions"),
+               plotlyOutput("NUTSoverview", width = 600),
+               plotlyOutput("NUTSdistpie", width = 600),
+               h3("Contact Information Gathered"),
+               uiOutput("NUTSlist"),
+               plotlyOutput("gaugeEMAIL", width = 600),
+               plotlyOutput("gaugePHONE", width = 600),
+               h3("Summary of results by NUTS region"),
+               DTOutput("NUTS_DT", width = 600)
+             )
+           )
   ),
   
   ## 1.5 Info tab  ==========================================================================================
-  tabPanel("Info"
+  tabPanel("Info",
+           fluidPage(
+             h3("Data Sources"),
+             p(paste("For information on the several data sources used in this application,",
+                     "please download the following Excel file:")),
+             a(href = "data_sources.xlsx", "Data Sources", download = NA, target = "_blank"),
+             br(),
+             h3("Development:"),
+             a(href = "https://github.com/ctoruno", "@ctoruno"),
+             h3("Data Webscrapping:"),
+             a(href = "https://github.com/ctoruno", "@ctoruno"),
+             br(),
+             a(href = "https://github.com/jaehee99", "@jaehee"),
+             br(),
+             a(href = "https://github.com/aspardog", "@aspardog"),
+             p("@pablo"),
+             br(),
+             h3("Code:"),
+             p("The code used in this Shiny App is publicly available in the following GitHub Repository:"),
+             a(href = "https://github.com/ctoruno/EU-Lawyer-Data", "EU-Lawyer-Data"),
+           )
   )
 )
   
@@ -196,13 +241,14 @@ appSERVER <- function(input, output, session) {
   })
   
   ## 2.2 Country tab  ==========================================================================================
+  
   # Defining data for Country Panel
   data4countryPanel.rct <- reactive({
      COUNTRYdata.df %>%
-      filter(country ==input$countrySelection)
+      filter(country == input$countrySelection)
   })
   
-  # Rendering general info panel
+  # Rendering general info and header
   output$country.header <- renderText({
     c(
       '<div style="display:inline-block;vertical-align:top;">',
@@ -254,6 +300,109 @@ appSERVER <- function(input, output, session) {
   output$country.qualified <- renderPlotly({
     toPlotly <- COUNTRYqualified_panel.fn(data = data4countryPanel.rct())
     ggplotly(toPlotly, tooltip = NULL)
+  })
+  
+  ## 2.2 NUTS tab  ==========================================================================================
+  
+  # Defining data for NUTS Panel
+  data4nutsPanel.rct <- reactive({
+    NUTSdata.df %>%
+      filter(country == input$nutsSelection)
+  })
+  
+  # Rendering general info and header
+  output$nuts.header <- renderText({
+    c(
+      '<div style="display:inline-block;vertical-align:top;">',
+      '<img src="', COUNTRYdata.df %>% filter(country == input$nutsSelection) %>% pull(flag), 
+      '" alt="img" width="100" height="75"/>',
+      '</div>
+          <div style="display:inline-block; margin: 10px;">
+          <h3>', input$nutsSelection,'</h3>
+      </div>'
+    )
+  })
+  
+  output$nuts.ginfo <- renderUI({
+    tagList(
+      tags$div(
+        tags$ul(
+          tags$li(strong("Population (2021):"), 
+                  format(COUNTRYdata.df %>% 
+                           filter(country == input$nutsSelection) %>% 
+                           pull(population), 
+                         big.mark = ",")),
+          br(),
+          tags$li(strong("Official languages:"), 
+                  COUNTRYdata.df %>% 
+                    filter(country == input$nutsSelection) %>% 
+                    pull(languages)),
+          br(),
+          tags$li(strong("Lawyers registered at the bar associations (last estimation):"), 
+                  format(COUNTRYdata.df %>% 
+                           filter(country == input$nutsSelection) %>% 
+                           pull(eurostat_est), 
+                         big.mark = ",")),
+          br(),
+          tags$li(strong("Lawyers successfully geocoded to a NUTS region::"), 
+                  format(NUTSdata.df %>% 
+                           filter(country == input$nutsSelection) %>% 
+                           group_by(country) %>% 
+                           summarise(sum = sum(nlawyers, 
+                                               na.rm = T)) %>% 
+                           pull(sum), 
+                         big.mark = ",")),
+          br(),
+          tags$li(strong("Lawyers residing in an unknown region:"), 
+                  format(COUNTRYdata.df %>%
+                           filter(country == input$nutsSelection) %>% 
+                           pull(umatchedNUTS), 
+                         big.mark = ","))
+        )
+      )
+    )
+  })
+  
+  # Rendering overview map
+  output$NUTSoverview <- renderPlotly({
+    toplotly <- NUTSmap.fn(selection = input$nutsSelection)
+    ggplotly(toplotly)
+  })
+  
+  # Rendering distribution pie
+  output$NUTSdistpie <- renderPlotly({
+    NUTSdistribution.fn(selection = input$nutsSelection)
+  })
+  
+  # Rendering UI for NUTS list picker
+  output$NUTSlist <- renderUI({
+    pickerInput(
+      inputId  = "specificNUTS",
+      label    = "Choose a region:", 
+      choices  = NUTSdata.df %>% 
+                  filter(country == input$nutsSelection) %>% 
+                  pull(NUTS_name)
+    )
+  })
+  
+  # Rendering Gauge EMAIL
+  output$gaugeEMAIL <- renderPlotly({
+    gaugeChart.fn(selectionC = input$nutsSelection, 
+                  selectionN = input$specificNUTS, 
+                  value      = "email")
+  })
+  
+  # Rendering Gauge PHONE
+  output$gaugePHONE <- renderPlotly({
+    gaugeChart.fn(selectionC = input$nutsSelection, 
+                  selectionN = input$specificNUTS, 
+                  value      = "phone")
+  })
+  
+  # Rendering DT summary table
+  output$NUTS_DT <- renderDT({
+    toDT <- NUTSdt.fn(selection = input$nutsSelection)
+    datatable(toDT)
   })
   
 }

@@ -1,4 +1,5 @@
 library(sf)
+library(readxl)
 library(tidyverse)
 
 # Loading data: Lawyer Data
@@ -53,7 +54,21 @@ COUNTRYdata.df <- master_data.sf %>%
     phone_firm_bin = sum(phone_firm_bin, na.rm = T),
     firm_email_bin = sum(firm_email_bin, na.rm = T)
   ) %>%
-  left_join(country_info.df)
+  left_join(country_info.df) %>%
+  left_join(
+    master_data.sf %>%
+      st_drop_geometry() %>%
+      filter(!(country %in% c("Spain"))) %>%
+      filter(is.na(NUTS_ID)) %>%
+      mutate(
+        country = case_when(
+          country == "Czechrep"   ~ "Czech Republic",
+          country == "Spain_new"  ~ "Spain",
+          TRUE ~ country)
+      ) %>%
+      group_by(country) %>%
+      summarise(umatchedNUTS = n())
+  )
 
 saveRDS(COUNTRYdata.df, "Data/COUNTRYdata.rds")
 
@@ -61,6 +76,6 @@ saveRDS(COUNTRYdata.df, "Data/COUNTRYdata.rds")
 MAPdata.sf <- master_data.sf %>%
   st_drop_geometry() %>%
   filter(!(country %in% c("Spain"))) %>%
-  select(location, firm_email_bin, phone_firm_bin, x, y)
+  select(location, firm_email_bin, NUTS_ID, phone_firm_bin, x, y)
 
 saveRDS(MAPdata.sf, "Data/MAPdata.rds")

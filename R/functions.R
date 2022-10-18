@@ -172,7 +172,7 @@ COUNTRYcontact_panel.fn <- function(data) {
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
-##                Qualified Experts                                                                         ----
+##                Qualified Experts (COUNTRY PANEL)                                                         ----
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
@@ -209,4 +209,204 @@ COUNTRYqualified_panel.fn <- function(data) {
 }
 
 
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                Overview Map (NUTS PANEL)                                                                 ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
+NUTSmap.fn <- function(selection) {
+  
+  # Defining data for map
+  codes      <- NUTS.sf %>% filter(CNTR_NAME == selection) %>% pull(NUTS_ID)
+  rec        <- NUTS.sf %>% filter(CNTR_NAME == selection) %>% pull(NAME_LATN)
+  names(rec) <-  codes
+  data4map <- MAPdata.sf %>%
+    filter(NUTS_ID %in% codes) %>%
+    group_by(location) %>%
+    summarise(
+      NUTS_ID = first(NUTS_ID),
+      x = first(x),
+      y = first(y),
+      n = n()
+    ) %>%
+    st_as_sf(coords  = c("x", "y"),
+             remove  = F,
+             na.fail = F) 
+  
+  # Setting coordinates system for data
+  st_crs(data4map) <- 4326
+    
+  # Creating the map
+  ggplot() +
+    geom_sf(data = NUTS.sf %>% 
+              filter(CNTR_NAME == selection) %>%
+              mutate(label = recode(NUTS_ID, !!!rec)),
+            aes(fill = label),
+            color    = "white") +
+    geom_sf(data     = data4map,
+            aes(text = paste("Location:", location),
+                size = n),
+            shape    = 1,
+            color    = "#324A5F") +
+    scale_fill_manual(name   = "Region",
+                      values = nutsPalette) +
+    theme_bw() +
+    theme(panel.grid.major = element_blank(),
+          legend.position  = "bottom",
+          legend.box       = "vertical",
+          legend.direction = "vertical",
+          legend.text      = element_text(family = "Fira Sans", 
+                                          face   = "plain", 
+                                          size   = 8, 
+                                          color  = "Black"),
+          legend.title     = element_text(family = "Fira Sans", 
+                                          face   = "bold", 
+                                          size   = 9, 
+                                          color  = "Black"), 
+          axis.text        = element_text(family = "Fira Sans", 
+                                          face   = "plain", 
+                                          size   = 8, 
+                                          color  = "Black")) +
+    guides(size  = guide_legend(nrow  = 1, 
+                                byrow = TRUE,
+                                title = "Number of Lawyers"),
+           fill  = guide_legend(nrow  = 2, 
+                                byrow = TRUE))
+}
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                Summary NUTS Table (NUTS PANEL)                                                           ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+NUTSdt.fn <- function(selection) {
+  NUTSdata.df %>%
+    filter(country == selection) %>%
+    select(
+      `NUTS ID`                  = NUTS_ID,
+      Region                     = NUTS_name,
+      `No. of extracted Lawyers` = nlawyers,
+      `Civil and Commercial`     = CClaw,
+      `Criminal Justice`         = CJlaw,
+      `Labour Law`               = LLlaw,
+      `Public Health`            = PHlaw
+    )
+}
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                Distribution Pie (NUTS PANEL)                                                             ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+NUTSdistribution.fn <- function(selection) {
+  
+  # Preparing data for pie charts
+  data4pie <- NUTSdata.df %>%
+    filter(country == selection) %>%
+    select(
+      Region               = NUTS_name,
+      `Extracted Lawyers`  = nlawyers
+    )
+  
+  if (nrow(data4pie) <= 5) {
+    palette <- distpie_5
+  } else if (nrow(data4pie) <= 8) {
+    palette <- distpie_8
+  } else {
+    palette <- distpie_18
+  }
+  
+  # Making the plotly
+  plot_ly(data         = data4pie,
+          labels       = ~Region, 
+          values       = ~`Extracted Lawyers`, 
+          type         = "pie",
+          textposition = "inside",
+          textinfo     = "label+percent",
+          hoverinfo    = "text",
+          text         = ~paste("Total Number of Lawyers:<br>",
+                                format(`Extracted Lawyers`, 
+                                       big.mark = ",")),
+          textfont     = list(family = "Fira Sans"),
+          marker       = list(colors = palette,
+                              line   = list(color = "#FFFFFF", 
+                                            width = 1)),
+          showlegend   = T,
+          domain       = list(row = 0, 
+                              column = 0)) %>%
+    layout(grid   = list(rows    = 1, 
+                         columns = 2),
+           xaxis  = list(showgrid       = F, 
+                         zeroline       = F, 
+                         showticklabels = F),
+           yaxis  = list(showgrid       = F, 
+                         zeroline       = F, 
+                         showticklabels = F),
+           legend = list(x = 0, 
+                         y = 0,
+                         orientation    = "h",
+                         title          =list(text = "<b> Region </b>"))
+    ) 
+}
+
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                Gauge E-Mail (NUTS PANEL)                                                                 ----
+##  
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+gaugeChart.fn <- function(selectionC, selectionN, value) {
+  
+  # Defining values for Gauge Charts depending on the value to display
+  if (value == "email") {
+    val <- NUTSdata.df %>%
+      filter(country == selectionC & NUTS_name == selectionN) %>%
+      mutate(perc = round((firm_email_bin/nlawyers)*100, 1)) %>%
+      pull(perc)
+    
+    color <- "#3E503C"
+    title <- "Percentage of Extracted Lawyers<br>with email address"
+  }
+  
+  if (value == "phone") {
+    val <- NUTSdata.df %>%
+      filter(country == selectionC & NUTS_name == selectionN) %>%
+      mutate(perc = round((phone_firm_bin/nlawyers)*100, 1)) %>%
+      pull(perc)
+    
+    color <- "#8D3C01"
+    title <- "Percentage of Extracted Lawyers<br>with phone number"
+  }
+  
+  # Creating the plotly
+  plot_ly(
+    domain  = list(x = c(0, 1), 
+                   y = c(0, 1)),
+    value   = val,
+    title   = list(text = title),
+    type    = "indicator",
+    mode    = "gauge+number",
+    gauge   = list(
+      bar   = list(color = color),
+      axis  = list(range = list(NULL, 100)),
+      steps = list(
+        list(range = c(0, 25), 
+             color = "gray"),
+        list(range = c(25, 75), 
+             color = "lightgray"))
+      )
+    ) %>%
+    layout(
+      margin = list(t = 30,
+                    b = 10,
+                    l = 20,
+                    r = 30),
+      font = list(color  = "darkblue", 
+                  family = "Fira Sans"))
+    
+}

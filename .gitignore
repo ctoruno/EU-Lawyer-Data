@@ -42,3 +42,7 @@ Data/.DS_Store
 *.xlsx
 **/.DS_Store
 *.dcf
+Data/NUTS/EU SUBNATIONAL WJP.dbf
+Data/NUTS/EU SUBNATIONAL WJP.prj
+Data/NUTS/EU SUBNATIONAL WJP.shp
+Data/NUTS/EU SUBNATIONAL WJP.shx
