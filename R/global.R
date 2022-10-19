@@ -6,6 +6,7 @@ library(plotly)
 library(sf)
 library(DT)
 library(terra)
+library(waiter)
 library(tidyverse)
 
 # Loading data
@@ -15,6 +16,9 @@ NUTSdata.df     <- readRDS("Data/NUTSdata.rds")
 
 # Loading NUTS shapefile
 NUTS.sf <- st_read("Data/NUTS/EU SUBNATIONAL WJP.shp")
+
+# Loading top specializations per country
+topSpecs.ls <- readRDS("Data/topSpecs.rds")
 
 # Source scripts
 source("R/functions.R")

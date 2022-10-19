@@ -8,7 +8,7 @@
 ##
 ## Creation date:     May 28th, 2022
 ##
-## This version:      October 17th, 2022
+## This version:      October 19th, 2022
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -168,6 +168,37 @@ COUNTRYcontact_panel.fn <- function(data) {
              )
            )
     ) 
+}
+
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+##
+##                Top Specializations (COUNTRY PANEL)                                                       ----
+##
+## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+COUNTRYspecializations.fn <- function(selection) {
+  
+  data <- topSpecs.ls[[selection]]
+  
+  if (is.null(data) == F) {
+    data2return <- data %>%
+      rename(spec = 1) %>%
+      arrange(desc(n)) %>%
+      mutate(
+        spec = str_to_title(spec),
+        n    = format(n, big.mark = ",")
+      ) %>%
+      rename(
+        `Specialization`  = 1,
+        `No. of Mentions` = 2,
+        `Percentage`      = 3
+      )
+  } else {
+    data2return <- tribble(~Specialization, ~"No. of Mentions", ~Percentage)
+  }
+  
+  return(data2return)
+  
 }
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

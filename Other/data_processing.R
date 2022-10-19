@@ -79,3 +79,14 @@ MAPdata.sf <- master_data.sf %>%
   select(location, firm_email_bin, NUTS_ID, phone_firm_bin, x, y)
 
 saveRDS(MAPdata.sf, "Data/MAPdata.rds")
+
+# Processing Top Specializations
+clist <- excel_sheets("Data/top_specs.xlsx")[-1]
+names(clist) <- clist
+topSpecs.ls <- lapply(clist, 
+                      function(country){
+                        read_excel(path  = "Data/top_specs.xlsx",
+                                   sheet = country)
+                      })
+
+saveRDS(topSpecs.ls, "Data/topSpecs.rds")

@@ -6,12 +6,18 @@
 ##
 ## Creation date:     May 28th, 2022
 ##
-## This version:      October 17th, 2022
+## This version:      October 19th, 2022
 ##
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 # Required packages + functions and data loading
 source("R/global.R")
+
+# Setting up waiting screen
+waiting_screen <- tagList(
+  spin_dots(),
+  h4("Server is busy processing data...")
+)
 
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ##
@@ -53,6 +59,14 @@ appUI <- navbarPage(
   
   ## 1.2 Map tab  ==============================================================================================
   tabPanel("Map Overview", 
+           # Setting waiters
+           useWaiter(),
+           waiterOnBusy(
+             html    = waiting_screen,
+             color   = "white",
+             fadeout = 500),
+           
+           # Map Layout
            leafletOutput("europeMap", 
                          height = 1000),
            absolutePanel(id        = "filters", 
@@ -80,6 +94,7 @@ appUI <- navbarPage(
   
   ## 1.3 Country tab  ==========================================================================================
   tabPanel("Data per country",
+           
            sidebarLayout(
              sidebarPanel(
                width = 3,
@@ -99,10 +114,7 @@ appUI <- navbarPage(
                h3("Contact Information Gathered"),
                plotlyOutput("country.contact", width = 600),
                h3("Top law specializations reported by individuals"),
-               # plotlyOutput("top_specs", width = 600),
-               br(),
-               h4("UNDER DEVELOPMENT"),
-               br(),
+               DTOutput("top_specs", width = 600),
                h3("Qualified experts for QRQ"),
                plotlyOutput("country.qualified", width = 500)
              )
@@ -113,6 +125,7 @@ appUI <- navbarPage(
   tabPanel("Data per NUTS region",
            sidebarLayout(
              sidebarPanel(
+               id    = "nutsPanel",
                width = 3,
                pickerInput(
                  inputId  = "nutsSelection",
@@ -170,6 +183,18 @@ appUI <- navbarPage(
 ## +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   
 appSERVER <- function(input, output, session) {
+  
+  # Start pop-up message
+  showModal(modalDialog(
+    title = "Important message",
+    paste("This shiny app is still under development. Therefore, this dashboard is only showing the current",
+          "data for all listed countries. Data for France is still under collection.",
+          "At the same time, this dashboard is processing the data for almost half a million lawyers.",
+          "Some listed countries, like France and Italy, might take a few seconds to load.", 
+          "We are working on improving the efficiency of the server estimations"),
+    easyClose = TRUE
+  ))
+  
   
   ## 2.1 Map tab  ==============================================================================================
   
@@ -294,7 +319,11 @@ appSERVER <- function(input, output, session) {
   })
   
   # Rendering Top Specializations
-
+  output$top_specs <- renderDT({
+    datatable(COUNTRYspecializations.fn(selection = input$countrySelection),
+              options = list(dom = "t",
+                             language = list(emptyTable = "No specialization data for this country")))
+  })
   
   # Rendering qualified individuals plotly
   output$country.qualified <- renderPlotly({
